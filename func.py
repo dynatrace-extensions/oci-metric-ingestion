@@ -23,8 +23,13 @@ def process_metrics(body: Dict):
     datapoints = body.get("datapoints")
 
     metric_map = namespace_map.get(namespace)
-    value_or_none = metric_map.value_from_oci_metric_name(metric_name, datapoints)
+    if metric_map is None:
+        logging.getLogger().error(f"Could not find a metric mapping for namespace '{namespace}'")
+        return
+
+    value_or_none = metric_map.value_from_oci_metric_name(metric_name, oci_dimensions, datapoints)
     if value_or_none is None:
+        logging.getLogger().error(f"Could not find a mapping for metric '{metric_name}' in namespace '{namespace}'")
         return
 
     dynatrace_metric_key, result = value_or_none
