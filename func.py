@@ -51,7 +51,7 @@ def push_metrics_to_dynatrace(mint_metric: MintMetric):
         # Append the log ingest endpoint to tenant url
         tenant_url = f"{tenant_url}{METRIC_INGEST_ENDPOINT}"
         headers = {
-            "Content-Type": "application/json",
+            "Content-Type": "text/plain",
             "Authorization": f"Api-Token {dynatrace_api_key}",
         }
         response = requests.post(tenant_url, data=str(mint_metric), headers=headers)
