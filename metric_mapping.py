@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Callable, Dict, List, Tuple, Optional
 from aggregation import (
     AggregateResult,
@@ -12,12 +12,12 @@ from aggregation import (
 class DynatraceToOCIMetric:
     dynatrace_metric_key: str
     aggregation_function: Callable[[List[Dict]], AggregateResult]
-    dimension_filter: Dict[str, str]
+    dimension_filter: Dict[str, str] = field(default_factory=dict)
 
 class MetricMapping:
     def __init__(
         self,
-        metric_key_map: Dict[str, DynatraceToOCIMetric],
+        metric_key_map: Dict[str, List[DynatraceToOCIMetric]],
         dimension_map: Dict[str, str],
         constant_dimension_map: Dict[str, str] = {}
     ):
@@ -38,21 +38,28 @@ class MetricMapping:
     def value_from_oci_metric_name(
         self, oci_metric_name: str, oci_dimensions: Dict[str, str], datapoints: List[Dict]
     ) -> Optional[Tuple[str, AggregateResult]]:
-        metric_mapping = self.metric_key_map.get(oci_metric_name)
-        if metric_mapping is None:
+        metric_mappings = self.metric_key_map.get(oci_metric_name)
+        if metric_mappings is None:
             return None
 
-        result = (metric_mapping.dynatrace_metric_key, metric_mapping.aggregation_function(datapoints))
 
-        if len(metric_mapping.dimension_filter) == 0:
-            return result
+        for metric_mapping in metric_mappings:
+            result = (metric_mapping.dynatrace_metric_key, metric_mapping.aggregation_function(datapoints))
 
-        is_filtered_out = True
-        for key, value in metric_mapping.dimension_filter.items():
-            if (oci_value := oci_dimensions.get(key)) and oci_value == value:
-                is_filtered_out = False
+            if len(metric_mapping.dimension_filter) == 0:
+                return result
+
+            is_filtered_out = True
+            for key, value in metric_mapping.dimension_filter.items():
+                if (oci_value := oci_dimensions.get(key)) and oci_value == value:
+                    is_filtered_out = False
+
+            if is_filtered_out:
+                result = None
+            else:
+                break
         
-        return None if is_filtered_out else result
+        return result
 
 
 """ All compute metric names imported by extension. """
@@ -192,16 +199,16 @@ FUNCTION_THROTTLED_RESPONSE_COUNT = (
 namespace_map: Dict[str, MetricMapping] = {
     "oci_computeagent": MetricMapping(
         metric_key_map={
-            "CPUUtilization": DynatraceToOCIMetric(COMPUTE_CPU_UTIL, aggregate_max),
-            "DiskBytesRead": DynatraceToOCIMetric(COMPUTE_DISK_READ_BYTES, aggregate_max),
-            "DiskBytesWritten": DynatraceToOCIMetric(COMPUTE_DISK_WRITE_BYTES, aggregate_max),
-            "DiskIopsRead": DynatraceToOCIMetric(COMPUTE_DISK_READ_IO, aggregate_max),
-            "DiskIopsWritten": DynatraceToOCIMetric(COMPUTE_DISK_WRITE_IO, aggregate_max),
-            "LoadAverage": DynatraceToOCIMetric(COMPUTE_LOAD, aggregate_max),
-            "MemoryAllocationStalls": DynatraceToOCIMetric(COMPUTE_MEM_ALLOCATION_STALLS, aggregate_max),
-            "MemoryUtilization": DynatraceToOCIMetric(COMPUTE_MEM_UTIL, aggregate_max),
-            "NetworksBytesIn": DynatraceToOCIMetric(COMPUTE_NETWORK_RECEIVE, aggregate_max),
-            "NetworksBytesOut": DynatraceToOCIMetric(COMPUTE_NETWORK_TRANSMIT, aggregate_max),
+            "CpuUtilization": [DynatraceToOCIMetric(COMPUTE_CPU_UTIL, aggregate_max)],
+            "DiskBytesRead": [DynatraceToOCIMetric(COMPUTE_DISK_READ_BYTES, aggregate_max)],
+            "DiskBytesWritten": [DynatraceToOCIMetric(COMPUTE_DISK_WRITE_BYTES, aggregate_max)],
+            "DiskIopsRead": [DynatraceToOCIMetric(COMPUTE_DISK_READ_IO, aggregate_max)],
+            "DiskIopsWritten": [DynatraceToOCIMetric(COMPUTE_DISK_WRITE_IO, aggregate_max)],
+            "LoadAverage": [DynatraceToOCIMetric(COMPUTE_LOAD, aggregate_max)],
+            "MemoryAllocationStalls": [DynatraceToOCIMetric(COMPUTE_MEM_ALLOCATION_STALLS, aggregate_max)],
+            "MemoryUtilization": [DynatraceToOCIMetric(COMPUTE_MEM_UTIL, aggregate_max)],
+            "NetworksBytesIn": [DynatraceToOCIMetric(COMPUTE_NETWORK_RECEIVE, aggregate_max)],
+            "NetworksBytesOut": [DynatraceToOCIMetric(COMPUTE_NETWORK_TRANSMIT, aggregate_max)],
         },
         dimension_map={
             "availabilityDomain": "oci.availability_domain",
@@ -218,36 +225,36 @@ namespace_map: Dict[str, MetricMapping] = {
     ),
     "oci_lbaas": MetricMapping(
         metric_key_map={
-            "HttpRequests": DynatraceToOCIMetric(LB_HTTP_REQUESTS, aggregate_mean),
-            "ActiveConnections": DynatraceToOCIMetric(LB_ACTIVE_CONNECTIONS, aggregate_mean),
-            "ActiveSSLConnections": DynatraceToOCIMetric(LB_ACTIVE_SSL_CONNECTIONS, aggregate_mean),
-            "BytesReceived": DynatraceToOCIMetric(LB_BYTES_RECEIVED, aggregate_mean),
-            "BytesSent": DynatraceToOCIMetric(LB_BYTES_SENT, aggregate_mean),
-            "AcceptedConnections": DynatraceToOCIMetric(LB_ACCEPTED_CONNECTIONS, aggregate_mean),
-            "HandledConnections": DynatraceToOCIMetric(LB_HANDLED_CONNECTIONS, aggregate_mean),
-            "FailedSSLHandshake": DynatraceToOCIMetric(LB_FAILED_SSL_HANDSHAKE, aggregate_mean),
-            "AcceptedSSLHandshake": DynatraceToOCIMetric(LB_ACCEPTED_SSL_HANDSHAKE, aggregate_mean),
-            "FailedSSLClientCertVerify": DynatraceToOCIMetric(
+            "HttpRequests": [DynatraceToOCIMetric(LB_HTTP_REQUESTS, aggregate_mean)],
+            "ActiveConnections": [DynatraceToOCIMetric(LB_ACTIVE_CONNECTIONS, aggregate_mean)],
+            "ActiveSSLConnections": [DynatraceToOCIMetric(LB_ACTIVE_SSL_CONNECTIONS, aggregate_mean)],
+            "BytesReceived": [DynatraceToOCIMetric(LB_BYTES_RECEIVED, aggregate_mean)],
+            "BytesSent": [DynatraceToOCIMetric(LB_BYTES_SENT, aggregate_mean)],
+            "AcceptedConnections": [DynatraceToOCIMetric(LB_ACCEPTED_CONNECTIONS, aggregate_mean)],
+            "HandledConnections": [DynatraceToOCIMetric(LB_HANDLED_CONNECTIONS, aggregate_mean)],
+            "FailedSSLHandshake": [DynatraceToOCIMetric(LB_FAILED_SSL_HANDSHAKE, aggregate_mean)],
+            "AcceptedSSLHandshake": [DynatraceToOCIMetric(LB_ACCEPTED_SSL_HANDSHAKE, aggregate_mean)],
+            "FailedSSLClientCertVerify": [DynatraceToOCIMetric(
                 LB_FAILED_SSL_CLIENT_CERT_VERIFY,
                 aggregate_sum,
-            ),
-            "PeakBandwidth": DynatraceToOCIMetric(LB_PEAK_BANDWIDTH, aggregate_mean),
-            "HttpResponses": DynatraceToOCIMetric(LB_HTTP_RESPONSES, aggregate_mean),
-            "HttpResponses200": DynatraceToOCIMetric(LB_HTTP_RESPONSES_200, aggregate_mean),
-            "HttpResponses2xx": DynatraceToOCIMetric(LB_HTTP_RESPONSES_2XX, aggregate_mean),
-            "HttpResponses3xx": DynatraceToOCIMetric(LB_HTTP_RESPONSES_3XX, aggregate_mean),
-            "HttpResponses4xx": DynatraceToOCIMetric(LB_HTTP_RESPONSES_4XX, aggregate_mean),
-            "HttpResponses5xx": DynatraceToOCIMetric(LB_HTTP_RESPONSES_5XX, aggregate_mean),
-            "HttpResponses502": DynatraceToOCIMetric(LB_HTTP_RESPONSES_502, aggregate_mean),
-            "HttpResponses504": DynatraceToOCIMetric(LB_HTTP_RESPONSES_504, aggregate_mean),
-            "BackendServers": DynatraceToOCIMetric(LB_BACKEND_SERVERS, aggregate_min),
-            "UnHealthyBackendServers": DynatraceToOCIMetric(LB_UNHEALTHY_BACKEND_SERVERS, aggregate_max),
-            "ResponseTimeHttpHeader": DynatraceToOCIMetric(LB_RESPONSE_TIME_HTTP, aggregate_max),
-            "ResponseTimeFirstByte": DynatraceToOCIMetric(LB_RESPONSE_TIME_TCP, aggregate_max),
-            "BackendTimeouts": DynatraceToOCIMetric(LB_BACKEND_TIMEOUTS, aggregate_mean),
-            "InvalidHeaderResponses": DynatraceToOCIMetric(LB_INVALID_HEADER_RESPONSES, aggregate_sum),
-            "KeepaliveConnections": DynatraceToOCIMetric(LB_KEEPALIVE_CONNECTIONS, aggregate_mean),
-            "ClosedConnections": DynatraceToOCIMetric(LB_CLOSED_CONNECTIONS, aggregate_sum),
+            )],
+            "PeakBandwidth": [DynatraceToOCIMetric(LB_PEAK_BANDWIDTH, aggregate_mean)],
+            "HttpResponses": [DynatraceToOCIMetric(LB_HTTP_RESPONSES, aggregate_mean)],
+            "HttpResponses200": [DynatraceToOCIMetric(LB_HTTP_RESPONSES_200, aggregate_mean)],
+            "HttpResponses2xx": [DynatraceToOCIMetric(LB_HTTP_RESPONSES_2XX, aggregate_mean)],
+            "HttpResponses3xx": [DynatraceToOCIMetric(LB_HTTP_RESPONSES_3XX, aggregate_mean)],
+            "HttpResponses4xx": [DynatraceToOCIMetric(LB_HTTP_RESPONSES_4XX, aggregate_mean)],
+            "HttpResponses5xx": [DynatraceToOCIMetric(LB_HTTP_RESPONSES_5XX, aggregate_mean)],
+            "HttpResponses502": [DynatraceToOCIMetric(LB_HTTP_RESPONSES_502, aggregate_mean)],
+            "HttpResponses504": [DynatraceToOCIMetric(LB_HTTP_RESPONSES_504, aggregate_mean)],
+            "BackendServers": [DynatraceToOCIMetric(LB_BACKEND_SERVERS, aggregate_min)],
+            "UnHealthyBackendServers": [DynatraceToOCIMetric(LB_UNHEALTHY_BACKEND_SERVERS, aggregate_max)],
+            "ResponseTimeHttpHeader": [DynatraceToOCIMetric(LB_RESPONSE_TIME_HTTP, aggregate_max)],
+            "ResponseTimeFirstByte": [DynatraceToOCIMetric(LB_RESPONSE_TIME_TCP, aggregate_max)],
+            "BackendTimeouts": [DynatraceToOCIMetric(LB_BACKEND_TIMEOUTS, aggregate_mean)],
+            "InvalidHeaderResponses": [DynatraceToOCIMetric(LB_INVALID_HEADER_RESPONSES, aggregate_sum)],
+            "KeepaliveConnections": [DynatraceToOCIMetric(LB_KEEPALIVE_CONNECTIONS, aggregate_mean)],
+            "ClosedConnections": [DynatraceToOCIMetric(LB_CLOSED_CONNECTIONS, aggregate_sum)],
         },
         dimension_map={
             "availabilityDomain": "oci.availability_domain",
@@ -267,15 +274,15 @@ namespace_map: Dict[str, MetricMapping] = {
     ),
     "oci_nlb": MetricMapping(
         metric_key_map={
-            "ProcessedBytes": DynatraceToOCIMetric(NETLB_PROCESSED_BYTES, aggregate_sum),
-            "ProcessedPackets": DynatraceToOCIMetric(NETLB_PROCESSED_PACKETS, aggregate_sum),
-            "IngressPacketsDroppedBySL": DynatraceToOCIMetric(NETLB_INGRESS_PACKETS_DROPPED, aggregate_sum),
-            "EgressPacketsDroppedBySL": DynatraceToOCIMetric(NETLB_EGRESS_PACKETS_DROPPED, aggregate_sum),
-            "HealthyBackendsPerNlb": DynatraceToOCIMetric(NETLB_HEALTHY_BACKENDS, aggregate_sum),
-            "UnhealthyBackendsPerNlb": DynatraceToOCIMetric(NETLB_UNHEALTHY_BACKENDS, aggregate_sum),
-            "NewConnections": DynatraceToOCIMetric(NETLB_NEW_CONNECTIONS, aggregate_sum),
-            "NewConnectionsTCP": DynatraceToOCIMetric(NETLB_NEW_CONNECTIONS_TCP, aggregate_sum),
-            "NewConnectionsUDP": DynatraceToOCIMetric(NETLB_NEW_CONNECTIONS_UDP, aggregate_sum),
+            "ProcessedBytes": [DynatraceToOCIMetric(NETLB_PROCESSED_BYTES, aggregate_sum)],
+            "ProcessedPackets": [DynatraceToOCIMetric(NETLB_PROCESSED_PACKETS, aggregate_sum)],
+            "IngressPacketsDroppedBySL": [DynatraceToOCIMetric(NETLB_INGRESS_PACKETS_DROPPED, aggregate_sum)],
+            "EgressPacketsDroppedBySL": [DynatraceToOCIMetric(NETLB_EGRESS_PACKETS_DROPPED, aggregate_sum)],
+            "HealthyBackendsPerNlb": [DynatraceToOCIMetric(NETLB_HEALTHY_BACKENDS, aggregate_sum)],
+            "UnhealthyBackendsPerNlb": [DynatraceToOCIMetric(NETLB_UNHEALTHY_BACKENDS, aggregate_sum)],
+            "NewConnections": [DynatraceToOCIMetric(NETLB_NEW_CONNECTIONS, aggregate_sum)],
+            "NewConnectionsTCP": [DynatraceToOCIMetric(NETLB_NEW_CONNECTIONS_TCP, aggregate_sum)],
+            "NewConnectionsUDP": [DynatraceToOCIMetric(NETLB_NEW_CONNECTIONS_UDP, aggregate_sum)],
         },
         dimension_map={
             "region": "oci.region",
@@ -291,30 +298,30 @@ namespace_map: Dict[str, MetricMapping] = {
     ),
     "oci_vcn": MetricMapping(
         metric_key_map={
-            "VnicIngressDropsSecurityList": DynatraceToOCIMetric(
+            "VnicIngressDropsSecurityList": [DynatraceToOCIMetric(
                 VCN_INGRESS_PACKETS_DROPPED_SL,
                 aggregate_sum,
-            ),
-            "VnicEgressDropsSecurityList": DynatraceToOCIMetric(
+            )],
+            "VnicEgressDropsSecurityList": [DynatraceToOCIMetric(
                 VCN_EGRESS_PACKETS_DROPPED_SL,
                 aggregate_sum,
-            ),
-            "VnicFromNetworkPackets": DynatraceToOCIMetric(VCN_PACKETS_FROM_NETWORK, aggregate_sum),
-            "VnicToNetworkPackets": DynatraceToOCIMetric(VCN_PACKETS_TO_NETWORK, aggregate_sum),
-            "VnicFromNetworkBytes": DynatraceToOCIMetric(VCN_BYTES_FROM_NETWORK, aggregate_sum),
-            "VnicToNetworkBytes": DynatraceToOCIMetric(VCN_BYTES_TO_NETWORK, aggregate_sum),
-            "VnicIngressDropsThrottle": DynatraceToOCIMetric(VCN_THROTTLED_INGRESS_PACKETS, aggregate_sum),
-            "VnicEgressDropsThrottle": DynatraceToOCIMetric(VCN_THROTTLED_EGRESS_PACKETS, aggregate_sum),
-            "VnicIngressDropsConntrackFull": DynatraceToOCIMetric(
+            )],
+            "VnicFromNetworkPackets": [DynatraceToOCIMetric(VCN_PACKETS_FROM_NETWORK, aggregate_sum)],
+            "VnicToNetworkPackets": [DynatraceToOCIMetric(VCN_PACKETS_TO_NETWORK, aggregate_sum)],
+            "VnicFromNetworkBytes": [DynatraceToOCIMetric(VCN_BYTES_FROM_NETWORK, aggregate_sum)],
+            "VnicToNetworkBytes": [DynatraceToOCIMetric(VCN_BYTES_TO_NETWORK, aggregate_sum)],
+            "VnicIngressDropsThrottle": [DynatraceToOCIMetric(VCN_THROTTLED_INGRESS_PACKETS, aggregate_sum)],
+            "VnicEgressDropsThrottle": [DynatraceToOCIMetric(VCN_THROTTLED_EGRESS_PACKETS, aggregate_sum)],
+            "VnicIngressDropsConntrackFull": [DynatraceToOCIMetric(
                 VCN_INGRESS_PACKETS_DROPPED_FCTT,
                 aggregate_sum,
-            ),
-            "VnicEgressDropsConntrackFull": DynatraceToOCIMetric(
+            )],
+            "VnicEgressDropsConntrackFull": [DynatraceToOCIMetric(
                 VCN_EGRESS_PACKETS_DROPPED_FCTT,
                 aggregate_sum,
-            ),
-            "VnicConntrackUtilPercent": DynatraceToOCIMetric(VCN_CTT_UTIL, aggregate_sum),
-            "VnicConntrackIsFull": DynatraceToOCIMetric(VCN_CTT_FULL, aggregate_sum),
+            )],
+            "VnicConntrackUtilPercent": [DynatraceToOCIMetric(VCN_CTT_UTIL, aggregate_sum)],
+            "VnicConntrackIsFull": [DynatraceToOCIMetric(VCN_CTT_FULL, aggregate_sum)],
         },
         dimension_map={
             "region": "oci.region",
@@ -331,12 +338,12 @@ namespace_map: Dict[str, MetricMapping] = {
     ),
     "oci_vpn": MetricMapping(
         metric_key_map={
-            "TunnelState": DynatraceToOCIMetric(VPN_TUNNEL_STATE, aggregate_sum),
-            "PacketsReceived": DynatraceToOCIMetric(VPN_PACKETS_RECEIVED, aggregate_sum),
-            "BytesReceived": DynatraceToOCIMetric(VPN_BYTES_RECEIVED, aggregate_sum),
-            "PacketsSent": DynatraceToOCIMetric(VPN_PACKETS_SENT, aggregate_sum),
-            "BytesSent": DynatraceToOCIMetric(VPN_BYTES_SENT, aggregate_sum),
-            "PacketsError": DynatraceToOCIMetric(VPN_PACKETS_ERROR, aggregate_sum),
+            "TunnelState": [DynatraceToOCIMetric(VPN_TUNNEL_STATE, aggregate_sum)],
+            "PacketsReceived": [DynatraceToOCIMetric(VPN_PACKETS_RECEIVED, aggregate_sum)],
+            "BytesReceived": [DynatraceToOCIMetric(VPN_BYTES_RECEIVED, aggregate_sum)],
+            "PacketsSent": [DynatraceToOCIMetric(VPN_PACKETS_SENT, aggregate_sum)],
+            "BytesSent": [DynatraceToOCIMetric(VPN_BYTES_SENT, aggregate_sum)],
+            "PacketsError": [DynatraceToOCIMetric(VPN_PACKETS_ERROR, aggregate_sum)],
         },
         dimension_map={
             "region": "oci.region",
@@ -352,11 +359,11 @@ namespace_map: Dict[str, MetricMapping] = {
     ),
     "oci_blockstore": MetricMapping(
         metric_key_map={
-            "VolumeReadThroughput": DynatraceToOCIMetric(BLOCKVOL_READ_THROUGHPUT, aggregate_mean),
-            "VolumeWriteThroughput": DynatraceToOCIMetric(BLOCKVOL_WRITE_THROUGHPUT, aggregate_mean),
-            "VolumeReadOps": DynatraceToOCIMetric(BLOCKVOL_READ_OPS, aggregate_mean),
-            "VolumeWriteOps": DynatraceToOCIMetric(BLOCKVOL_WRITE_OPS, aggregate_mean),
-            "VolumeThrottledIOs": DynatraceToOCIMetric(BLOCKVOL_THROTTLED_IO, aggregate_sum),
+            "VolumeReadThroughput": [DynatraceToOCIMetric(BLOCKVOL_READ_THROUGHPUT, aggregate_mean)],
+            "VolumeWriteThroughput": [DynatraceToOCIMetric(BLOCKVOL_WRITE_THROUGHPUT, aggregate_mean)],
+            "VolumeReadOps": [DynatraceToOCIMetric(BLOCKVOL_READ_OPS, aggregate_mean)],
+            "VolumeWriteOps": [DynatraceToOCIMetric(BLOCKVOL_WRITE_OPS, aggregate_mean)],
+            "VolumeThrottledIOs": [DynatraceToOCIMetric(BLOCKVOL_THROTTLED_IO, aggregate_sum)],
         },
         dimension_map={
             "region": "oci.region",
@@ -378,13 +385,13 @@ namespace_map: Dict[str, MetricMapping] = {
     # )
     "oci_instancepools": MetricMapping(
         metric_key_map={
-            "InstancePoolSize": DynatraceToOCIMetric(INSTANCE_POOL_SIZE, aggregate_sum),
-            "ProvisioningInstances": DynatraceToOCIMetric(
+            "InstancePoolSize": [DynatraceToOCIMetric(INSTANCE_POOL_SIZE, aggregate_sum)],
+            "ProvisioningInstances": [DynatraceToOCIMetric(
                 INSTANCE_POOL_INSTANCES_PROVISIONING,
                 aggregate_sum,
-            ),
-            "RunningInstances": DynatraceToOCIMetric(INSTANCE_POOL_INSTANCES_RUNNING, aggregate_sum),
-            "TerminatedInstances": DynatraceToOCIMetric(INSTANCE_POOL_INSTANCES_TERMINATED, aggregate_sum),
+            )],
+            "RunningInstances": [DynatraceToOCIMetric(INSTANCE_POOL_INSTANCES_RUNNING, aggregate_sum)],
+            "TerminatedInstances": [DynatraceToOCIMetric(INSTANCE_POOL_INSTANCES_TERMINATED, aggregate_sum)],
         },
         dimension_map={
             "DisplayName": "oci.resource_display_name",
@@ -398,40 +405,54 @@ namespace_map: Dict[str, MetricMapping] = {
             "oci.service": "instance_pool",
         },
     ),
-    # "oci_filestorage": MetricMapping(
-    #     metric_key_map={
-    #         'FileSystemReadThroughput[1m]{resourceType = "filesystem"}': (FS_READ_THROUGHPUT, aggregate_mean),
-    #         'FileSystemWriteThroughput[1m]{resourceType = "filesystem"}': (FS_WRITE_THROUGHPUT, aggregate_mean),
-    #         'FileSystemReadRequestsbySize[1m]{resourceType = "filesystem"}': (FS_READ_REQUESTS, aggregate_mean),
-    #         'FileSystemWriteRequestsbySize[1m]{resourceType = "filesystem"}': (FS_WRITE_REQUESTS, aggregate_mean),
-    #         'FileSystemReadAverageLatencybySize[1m]{resourceType = "filesystem"}': (FS_READ_LATENCY, aggregate_mean),
-    #         'FileSystemWriteAverageLatencybySize[1m]{resourceType = "filesystem"}': (FS_WRITE_LATENCY, aggregate_mean),
-    #         'MetadataRequestAverageLatency[1m]{resourceType = "filesystem", operation = "ReadMetadata"}': (FS_METADATA_READ_LATENCY, aggregate_mean),
-    #         'MetadataRequestAverageLatency[1m]{resourceType = "filesystem", operation = "WriteMetadata"}': (FS_METADATA_WRITE_LATENCY, aggregate_mean),
-    #         'MetadataIOPS[1m]{resourceType = "filesystem"}': (FS_METADATA_IOPS, aggregate_mean),
-    #         'FileSystemUsage[60m]{resourceType = "filesystem"}': (FS_USAGE, aggregate_mean),
-    #     }
-    # )
+    "oci_filestorage": MetricMapping(
+        metric_key_map={
+            'FileSystemReadThroughput': [DynatraceToOCIMetric(FS_READ_THROUGHPUT, aggregate_mean, {"resourceType": "filesystem"})],
+            'FileSystemWriteThroughput': [DynatraceToOCIMetric(FS_WRITE_THROUGHPUT, aggregate_mean, {"resourceType": "filesystem"})],
+            'FileSystemReadRequestsbySize': [DynatraceToOCIMetric(FS_READ_REQUESTS, aggregate_mean, {"resourceType": "filesystem"})],
+            'FileSystemWriteRequestsbySize': [DynatraceToOCIMetric(FS_WRITE_REQUESTS, aggregate_mean, {"resourceType": "filesystem"})],
+            'FileSystemReadAverageLatencybySize': [DynatraceToOCIMetric(FS_READ_LATENCY, aggregate_mean, {"resourceType": "filesystem"})],
+            'FileSystemWriteAverageLatencybySize': [DynatraceToOCIMetric(FS_WRITE_LATENCY, aggregate_mean, {"resourceType": "filesystem"})],
+            'MetadataRequestAverageLatency': [DynatraceToOCIMetric(FS_METADATA_READ_LATENCY, aggregate_mean, {"resourceType": "filesystem", "operation": "ReadMetadata"}), DynatraceToOCIMetric(FS_METADATA_WRITE_LATENCY, aggregate_mean, {"resourceType": "filesystem", "operation": "WriteMetadata"})],
+            'MetadataIOPS': [DynatraceToOCIMetric(FS_METADATA_IOPS, aggregate_mean, {"resourceType": "filesystem"})],
+            'FileSystemUsage': [DynatraceToOCIMetric(FS_USAGE, aggregate_mean, {"resourceType": "filesystem"})],
+        },
+        dimension_map={
+            "compartmentId": "oci.compartment_id",
+            "region": "oci.region",
+            "resourceId": "oci.resource_id",
+            "resourceGroup": "oci.resource_group",
+            "resourceType": "oci.resource_type",
+            "mountTargetId": "mount_target_id",
+            "throughput": "throughput",
+            "size": "size",
+            "operation": "operation",
+        },
+        constant_dimension_map={
+            "cloud.provider": "oci",
+            "oci.service": "file_system",
+        },
+    ),
     "oci_apigateway": MetricMapping(
         metric_key_map={
-            "HttpRequests": DynatraceToOCIMetric(API_GATEWAY_HTTP_REQUESTS, aggregate_sum),
-            "HttpResponses": DynatraceToOCIMetric(API_GATEWAY_HTTP_RESPONSES, aggregate_sum),
-            "BytesSent": DynatraceToOCIMetric(API_GATEWAY_BYTES_SENT, aggregate_sum),
-            "BytesReceived": DynatraceToOCIMetric(API_GATEWAY_BYTES_RECEIVED, aggregate_sum),
-            "Latency": DynatraceToOCIMetric(API_GATEWAY_LATENCY, aggregate_mean),
-            "InternalLatency": DynatraceToOCIMetric(API_GATEWAY_INTERNAL_LATENCY, aggregate_mean),
-            "IntegrationLatency": DynatraceToOCIMetric(API_GATEWAY_INTEGRATION_LATENCY, aggregate_mean),
-            "BackendHttpResponses": DynatraceToOCIMetric(API_GATEWAY_BACKEND_HTTP_RESPONSES, aggregate_sum),
-            "UsagePlanRequests": DynatraceToOCIMetric(API_GATEWAY_USAGE_PLAN_REQUESTS, aggregate_sum),
-            "SubscriberRequests": DynatraceToOCIMetric(API_GATEWAY_SUBSCRIBER_REQUESTS, aggregate_sum),
-            "SubscriberQuotaProportionUsed": DynatraceToOCIMetric(
+            "HttpRequests": [DynatraceToOCIMetric(API_GATEWAY_HTTP_REQUESTS, aggregate_sum)],
+            "HttpResponses": [DynatraceToOCIMetric(API_GATEWAY_HTTP_RESPONSES, aggregate_sum)],
+            "BytesSent": [DynatraceToOCIMetric(API_GATEWAY_BYTES_SENT, aggregate_sum)],
+            "BytesReceived": [DynatraceToOCIMetric(API_GATEWAY_BYTES_RECEIVED, aggregate_sum)],
+            "Latency": [DynatraceToOCIMetric(API_GATEWAY_LATENCY, aggregate_mean)],
+            "InternalLatency": [DynatraceToOCIMetric(API_GATEWAY_INTERNAL_LATENCY, aggregate_mean)],
+            "IntegrationLatency": [DynatraceToOCIMetric(API_GATEWAY_INTEGRATION_LATENCY, aggregate_mean)],
+            "BackendHttpResponses": [DynatraceToOCIMetric(API_GATEWAY_BACKEND_HTTP_RESPONSES, aggregate_sum)],
+            "UsagePlanRequests": [DynatraceToOCIMetric(API_GATEWAY_USAGE_PLAN_REQUESTS, aggregate_sum)],
+            "SubscriberRequests": [DynatraceToOCIMetric(API_GATEWAY_SUBSCRIBER_REQUESTS, aggregate_sum)],
+            "SubscriberQuotaProportionUsed": [DynatraceToOCIMetric(
                 API_GATEWAY_SUBSCRIBER_QUOTA_PROPORTION_USED,
                 aggregate_mean,
-            ),
-            "SubscriberRateLimitProportionUsed": DynatraceToOCIMetric(
+            )],
+            "SubscriberRateLimitProportionUsed": [DynatraceToOCIMetric(
                 API_GATEWAY_SUBSCRIBER_RATE_LIMIT_PROPORTION_USED,
                 aggregate_mean,
-            ),
+            )],
         },
         dimension_map={
             "resourceName": "oci.resource_display_name",
@@ -448,10 +469,9 @@ namespace_map: Dict[str, MetricMapping] = {
     ),
     "oci_faas": MetricMapping(
         metric_key_map={
-        "FunctionInvocationCount": DynatraceToOCIMetric(FUNCTION_INVOCATION_COUNT, aggregate_sum),
-        "FunctionExecutionDuration": DynatraceToOCIMetric(FUNCTION_EXECUTION_DURATION, aggregate_mean),
-        # 'FunctionResponseCount[1m]{responseType = "Error"}.sum()': (FUNCTION_ERROR_RESPONSE_COUNT),
-        # 'FunctionResponseCount[1m]{responseType = "Throttled"}.sum()': (FUNCTION_THROTTLED_RESPONSE_COUNT),
+        "FunctionInvocationCount": [DynatraceToOCIMetric(FUNCTION_INVOCATION_COUNT, aggregate_sum)],
+        "FunctionExecutionDuration": [DynatraceToOCIMetric(FUNCTION_EXECUTION_DURATION, aggregate_mean)],
+        'FunctionResponseCount': [DynatraceToOCIMetric(FUNCTION_ERROR_RESPONSE_COUNT, aggregate_sum, {"responseType": "Error"}), DynatraceToOCIMetric(FUNCTION_THROTTLED_RESPONSE_COUNT, aggregate_sum, {"responseType": "Throttled"})],
         },
         dimension_map={
             "resourceDisplayName": "oci.resource_display_name",

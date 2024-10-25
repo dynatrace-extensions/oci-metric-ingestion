@@ -9,3 +9,10 @@ memory: 256
 config:
   DYNATRACE_API_KEY: <API Key>
   DYNATRACE_TENANT: <Tenant URL>
+  # Set this to True if you want all metrics pushed by OCI to be ingested into Dynatrace.
+  # This is disabled by default so only metrics that have metadata defined in the 
+  # 'Oracle Cloud Infrastructure' extension will be imported.
+  # If enabled, metrics without metadata will be imported with a metric key matching the following format:
+  # cloud.oci.<oci namespace with the 'oci_' prefix removed>.<metric name>
+  # Ex: "CpuUtilization" from namespace "oci_computeagent" -> "cloud.oci.computeagent.CpuUtilization"  
+  IMPORT_ALL_METRICS: False
