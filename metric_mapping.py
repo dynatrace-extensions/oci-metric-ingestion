@@ -18,7 +18,7 @@ class MetricMapping:
     def __init__(
         self,
         metric_key_map: Dict[str, List[DynatraceToOCIMetric]],
-        dimension_map: Dict[str, str],
+        dimension_map: Dict[str, List[str]],
         constant_dimension_map: Dict[str, str] = {}
     ):
         self.metric_key_map = metric_key_map
@@ -29,9 +29,10 @@ class MetricMapping:
     def dimensions(self, oci_dimensions: Dict[str, str]) -> Dict[str, str]:
         dimensions = self.constant_dimension_map.copy()
         for key, value in oci_dimensions.items():
-            dynatrace_dimension_key = self.dimension_map.get(key)
-            if dynatrace_dimension_key:
-                dimensions[dynatrace_dimension_key] = value
+            dynatrace_dimension_keys = self.dimension_map.get(key)
+            if dynatrace_dimension_keys:
+                for dynatrace_dimension_key in dynatrace_dimension_keys:
+                    dimensions[dynatrace_dimension_key] = value
         return dimensions
 
     # Given the oci metric name and the list of datapoints, this function returns the dynatrace metric name and the aggregated value
@@ -211,15 +212,15 @@ namespace_map: Dict[str, MetricMapping] = {
             "NetworksBytesOut": [DynatraceToOCIMetric(COMPUTE_NETWORK_TRANSMIT, aggregate_max)],
         },
         dimension_map={
-            "availabilityDomain": "oci.availability_domain",
-            "faultDomain": "oci.fault_domain",
-            "imageId": "image_id",
-            "instancePoolId": "instance_pool_id",
-            "region": "oci.region",
-            "resourceDisplayName": "oci.resource_display_name",
-            "resourceId": "oci.resource_id",
-            "resourceGroup": "oci.resource_group",
-            "compartmentId": "oci.compartment_id",
+            "availabilityDomain": ["oci.availability_domain"],
+            "faultDomain": ["oci.fault_domain"],
+            "imageId": ["image_id"],
+            "instancePoolId": ["instance_pool_id"],
+            "region": ["oci.region"],
+            "resourceDisplayName": ["oci.resource_display_name"],
+            "resourceId": ["oci.resource_id"],
+            "resourceGroup": ["oci.resource_group"],
+            "compartmentId": ["oci.compartment_id"],
         },
         constant_dimension_map={"cloud.provider": "oci", "oci.service": "compute"},
     ),
@@ -257,15 +258,15 @@ namespace_map: Dict[str, MetricMapping] = {
             "ClosedConnections": [DynatraceToOCIMetric(LB_CLOSED_CONNECTIONS, aggregate_sum)],
         },
         dimension_map={
-            "availabilityDomain": "oci.availability_domain",
-            "lbComponent": "lb_component",
-            "lbHostId": "lb_host_id",
-            "region": "oci.region",
-            "lbName": "oci.resource_display_name",
-            "resourceId": "oci.resource_id",
-            "resourceGroup": "oci.resource_group",
-            "compartmentId": "oci.compartment_id",
-            "backendSetName": "backend_set_name",
+            "availabilityDomain": ["oci.availability_domain"],
+            "lbComponent": ["lb_component"],
+            "lbHostId": ["lb_host_id"],
+            "region": ["oci.region"],
+            "lbName": ["oci.resource_display_name"],
+            "resourceId": ["oci.resource_id"],
+            "resourceGroup": ["oci.resource_group"],
+            "compartmentId": ["oci.compartment_id"],
+            "backendSetName": ["backend_set_name"],
         },
         constant_dimension_map={
             "cloud.provider": "oci",
@@ -285,11 +286,11 @@ namespace_map: Dict[str, MetricMapping] = {
             "NewConnectionsUDP": [DynatraceToOCIMetric(NETLB_NEW_CONNECTIONS_UDP, aggregate_sum)],
         },
         dimension_map={
-            "region": "oci.region",
-            "resourceName": "oci.resource_display_name",
-            "resourceId": "oci.resource_id",
-            "resourceGroup": "oci.resource_group",
-            "compartmentId": "oci.compartment_id",
+            "region": ["oci.region"],
+            "resourceName": ["oci.resource_display_name"],
+            "resourceId": ["oci.resource_id"],
+            "resourceGroup": ["oci.resource_group"],
+            "compartmentId": ["oci.compartment_id"],
         },
         constant_dimension_map={
             "cloud.provider": "oci",
@@ -324,12 +325,10 @@ namespace_map: Dict[str, MetricMapping] = {
             "VnicConntrackIsFull": [DynatraceToOCIMetric(VCN_CTT_FULL, aggregate_sum)],
         },
         dimension_map={
-            "region": "oci.region",
-            # "resourceId": "oci.resource_display_name",
-            # "resourceId": "vnic_id",
-            "resourceId": "oci.resource_id",
-            "resourceGroup": "oci.resource_group",
-            "compartmentId": "oci.compartment_id",
+            "region": ["oci.region"],
+            "resourceId": ["oci.resource_id", "oci.resource_display_name","vnic_id"],
+            "resourceGroup": ["oci.resource_group"],
+            "compartmentId": ["oci.compartment_id"],
         },
         constant_dimension_map={
             "cloud.provider": "oci",
@@ -346,11 +345,11 @@ namespace_map: Dict[str, MetricMapping] = {
             "PacketsError": [DynatraceToOCIMetric(VPN_PACKETS_ERROR, aggregate_sum)],
         },
         dimension_map={
-            "region": "oci.region",
-            "parentResourceId": "oci.resource_id",
-            "resourceGroup": "oci.resource_group",
-            "compartmentId": "oci.compartment_id",
-            "publicIp": "vpn.public_ip",
+            "region": ["oci.region"],
+            "parentResourceId": ["oci.resource_id"],
+            "resourceGroup": ["oci.resource_group"],
+            "compartmentId": ["oci.compartment_id"],
+            "publicIp": ["vpn.public_ip"],
         },
         constant_dimension_map={
             "cloud.provider": "oci",
@@ -366,11 +365,11 @@ namespace_map: Dict[str, MetricMapping] = {
             "VolumeThrottledIOs": [DynatraceToOCIMetric(BLOCKVOL_THROTTLED_IO, aggregate_sum)],
         },
         dimension_map={
-            "region": "oci.region",
-            "resourceId": "oci.resource_id",
-            "attachmentId": "attachment_id",
-            "resourceGroup": "oci.resource_group",
-            "compartmentId": "oci.compartment_id",
+            "region": ["oci.region"],
+            "resourceId": ["oci.resource_id"],
+            "attachmentId": ["attachment_id"],
+            "resourceGroup": ["oci.resource_group"],
+            "compartmentId": ["oci.compartment_id"],
         },
         constant_dimension_map={
             "cloud.provider": "oci",
@@ -394,11 +393,11 @@ namespace_map: Dict[str, MetricMapping] = {
             "TerminatedInstances": [DynatraceToOCIMetric(INSTANCE_POOL_INSTANCES_TERMINATED, aggregate_sum)],
         },
         dimension_map={
-            "DisplayName": "oci.resource_display_name",
-            "region": "oci.region",
-            "resourceId": "oci.resource_id",
-            "compartmentId": "oci.compartment_id",
-            "resourceGroup": "oci.resource_group",
+            "DisplayName": ["oci.resource_display_name"],
+            "region": ["oci.region"],
+            "resourceId": ["oci.resource_id"],
+            "compartmentId": ["oci.compartment_id"],
+            "resourceGroup": ["oci.resource_group"],
         },
         constant_dimension_map={
             "cloud.provider": "oci",
@@ -418,15 +417,15 @@ namespace_map: Dict[str, MetricMapping] = {
             'FileSystemUsage': [DynatraceToOCIMetric(FS_USAGE, aggregate_mean, {"resourceType": "filesystem"})],
         },
         dimension_map={
-            "compartmentId": "oci.compartment_id",
-            "region": "oci.region",
-            "resourceId": "oci.resource_id",
-            "resourceGroup": "oci.resource_group",
-            "resourceType": "oci.resource_type",
-            "mountTargetId": "mount_target_id",
-            "throughput": "throughput",
-            "size": "size",
-            "operation": "operation",
+            "compartmentId": ["oci.compartment_id"],
+            "region": ["oci.region"],
+            "resourceId": ["oci.resource_id"],
+            "resourceGroup": ["oci.resource_group"],
+            "resourceType": ["oci.resource_type"],
+            "mountTargetId": ["mount_target_id"],
+            "throughput": ["throughput"],
+            "size": ["size"],
+            "operation": ["operation"],
         },
         constant_dimension_map={
             "cloud.provider": "oci",
@@ -455,12 +454,12 @@ namespace_map: Dict[str, MetricMapping] = {
             )],
         },
         dimension_map={
-            "resourceName": "oci.resource_display_name",
-            "region": "oci.region",
-            "resourceId": "oci.resource_id",
-            "compartmentId": "oci.compartment_id",
-            "resourceGroup": "oci.resource_group",
-            "resourceTenantId": "oci.tenancy_id"
+            "resourceName": ["oci.resource_display_name"],
+            "region": ["oci.region"],
+            "resourceId": ["oci.resource_id"],
+            "compartmentId": ["oci.compartment_id"],
+            "resourceGroup": ["oci.resource_group"],
+            "resourceTenantId": ["oci.tenancy_id"],
         },
         constant_dimension_map={
             "cloud.provider": "oci",
@@ -474,12 +473,12 @@ namespace_map: Dict[str, MetricMapping] = {
         'FunctionResponseCount': [DynatraceToOCIMetric(FUNCTION_ERROR_RESPONSE_COUNT, aggregate_sum, {"responseType": "Error"}), DynatraceToOCIMetric(FUNCTION_THROTTLED_RESPONSE_COUNT, aggregate_sum, {"responseType": "Throttled"})],
         },
         dimension_map={
-            "resourceDisplayName": "oci.resource_display_name",
-            "region": "oci.region",
-            "resourceId": "oci.resource_id",
-            "compartmentId": "oci.compartment_id",
-            "resourceGroup": "oci.resource_group",
-            "resourceTenantId": "oci.tenancy_id"
+            "resourceDisplayName": ["oci.resource_display_name"],
+            "region": ["oci.region"],
+            "resourceId": ["oci.resource_id"],
+            "compartmentId": ["oci.compartment_id"],
+            "resourceGroup": ["oci.resource_group"],
+            "resourceTenantId": ["oci.tenancy_id"],
         },
         constant_dimension_map={
             "cloud.provider": "oci",

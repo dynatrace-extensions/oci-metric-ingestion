@@ -26,13 +26,17 @@ def process_metrics(body: Dict):
 
     metric_map = namespace_map.get(namespace)
     if metric_map is None:
-        logging.getLogger().error(f"Could not find a metric mapping for namespace '{namespace}'")
+        logging.getLogger().error(
+            f"Could not find a metric mapping for namespace '{namespace}'"
+        )
         return
 
     import_all_metrics = bool(os.environ["IMPORT_ALL_METRICS"])
     logging.getLogger().info(f"import_all_metrics: {import_all_metrics}")
 
-    value_or_none = metric_map.value_from_oci_metric_name(metric_name, oci_dimensions, datapoints)
+    value_or_none = metric_map.value_from_oci_metric_name(
+        metric_name, oci_dimensions, datapoints
+    )
     if value_or_none is None:
         if import_all_metrics:
             key_namespace = namespace.replace("oci_", "")
@@ -49,15 +53,22 @@ def process_metrics(body: Dict):
                 max_value = min(max_value, value)
                 sum_value += value
 
-
             mint_metric = MintMetric(
-                key, SummaryStat(min_value, max_value, sum_value, len(datapoints)), oci_dimensions, timestamp
+                key,
+                SummaryStat(min_value, max_value, sum_value, len(datapoints)),
+                {
+                    "oci.resource_group": oci_dimensions.get("resourceGroup"),
+                    "oci.compartment_id": oci_dimensions.get("compartmentId"),
+                },
+                timestamp,
             )
             logging.getLogger().info(f"mint_metric: {mint_metric}")
             push_metrics_to_dynatrace(mint_metric)
         else:
-            logging.getLogger().debug(f"Could not find a mapping for metric '{metric_name}' in namespace '{namespace}'")
-        
+            logging.getLogger().debug(
+                f"Could not find a mapping for metric '{metric_name}' in namespace '{namespace}'"
+            )
+
         return
 
     dynatrace_metric_key, result = value_or_none
@@ -69,8 +80,8 @@ def process_metrics(body: Dict):
     logging.getLogger().info(f"process_metrics: Mint Metric: {mint_metric}")
     push_metrics_to_dynatrace(mint_metric)
 
-METRIC_INGEST_ENDPOINT = "/api/v2/metrics/ingest"
 
+METRIC_INGEST_ENDPOINT = "/api/v2/metrics/ingest"
 
 def push_metrics_to_dynatrace(mint_metric: MintMetric):
     try:
