@@ -29,7 +29,7 @@ If the deployment succeeded then you should see the image in your OCI container 
 ![alt text](images/image-9.png)
 
 ## Debugging 
-If you are running into issues getting the connector hub to work, go to the application and enable **Function Invocation Logs**.
+If you are running into issues getting the connector to work, go to the application and enable **Function Invocation Logs**.
 ![alt text](images/image-12.png)
 Any errors will be logged here as well as some information about when the function has been run.
 ![alt text](images/image-11.png)
