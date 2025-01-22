@@ -1,3 +1,6 @@
+## Purpose
+See https://www.dynatrace.com/hub/detail/oracle-connector-hub-signals-ingest/
+
 ## Getting Started
 **Note:** These actions must be done by a OCI tenancy administrator using the Oracle Cloud Shell or Oracle Code Editor.
 Policies must also be configured in the OCI tenant to allow the Service Connector read metrics from the tenant. Users should do this using a group where the resource type is `serviceconnectors` before assigning the following policy: 
