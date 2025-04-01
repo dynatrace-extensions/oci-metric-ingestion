@@ -7,8 +7,14 @@ run_image: fnproject/python:3.11
 entrypoint: /python/bin/fdk /function/func.py handler
 memory: 256
 config:
-  DYNATRACE_API_KEY: <API Key>
   DYNATRACE_TENANT: <Tenant URL>
+  AUTH_METHOD: "oauth" # Can be either `oauth` or `token` - fill out their respective sections below
+  # OAuth 
+  OAUTH_CLIENT_ID: <OAuth Client ID>
+  OAUTH_CLIENT_SECRET: <OAuth Client Secret>
+  OAUTH_ACCOUNT_URN: <OAuth Client Account URN>
+  # Token
+  DYNATRACE_API_KEY: <API Key with the 'metrics.ingest' scope>
   # Set this to True if you want all metrics pushed by OCI to be ingested into Dynatrace.
   # This is disabled by default so only metrics that have metadata defined in the 
   # 'Oracle Cloud Infrastructure' extension will be imported.
