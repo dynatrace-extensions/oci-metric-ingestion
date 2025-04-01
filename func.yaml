@@ -14,7 +14,7 @@ config:
   OAUTH_CLIENT_SECRET: <OAuth Client Secret>
   OAUTH_ACCOUNT_URN: <OAuth Client Account URN>
   # Token
-  DYNATRACE_API_KEY: <API Key>
+  DYNATRACE_API_KEY: <API Key with the 'metrics.ingest' scope>
   # Set this to True if you want all metrics pushed by OCI to be ingested into Dynatrace.
   # This is disabled by default so only metrics that have metadata defined in the 
   # 'Oracle Cloud Infrastructure' extension will be imported.
