@@ -5,6 +5,7 @@ import logging
 import sys
 import requests
 from typing import Dict
+from dynatrace_client import DynatraceClient
 from mint import MintMetric
 from summary_stat import SummaryStat
 from metric_mapping import namespace_map
@@ -85,21 +86,25 @@ METRIC_INGEST_ENDPOINT = "/api/v2/metrics/ingest"
 
 def push_metrics_to_dynatrace(mint_metric: MintMetric):
     try:
-        dynatrace_api_key = os.environ["DYNATRACE_API_KEY"]
         tenant_url = os.environ["DYNATRACE_TENANT"]
-
         # Remove the trailing slash if it exits
         if tenant_url.endswith("/"):
             tenant_url = tenant_url[:-1]
+        client = DynatraceClient(tenant_url)
 
-        # Append the log ingest endpoint to tenant url
-        tenant_url = f"{tenant_url}{METRIC_INGEST_ENDPOINT}"
-        headers = {
-            "Content-Type": "text/plain",
-            "Authorization": f"Api-Token {dynatrace_api_key}",
-        }
-        response = requests.post(tenant_url, data=str(mint_metric), headers=headers)
-        logging.getLogger().info(response.text)
+        auth_method = os.environ["AUTH_METHOD"]
+        if auth_method == "oauth":
+            client_id = os.environ["OAUTH_CLIENT_ID"]
+            client_secret = os.environ["OAUTH_CLIENT_SECRET"]
+            account_urn = os.environ["OAUTH_ACCOUNT_URN"]
+            client.using_oauth(client_id, client_secret, account_urn)
+        elif auth_method == "token":
+            api_token = os.environ["DYNATRACE_API_KEY"]
+            client.using_api_token(api_token)
+        else:
+            logging.getLogger().error(f"Invalid authentication method '{auth_method}'. Expected either 'oauth' or 'token'")
+
+        client.send_mint_metric(str(mint_metric))
     except (Exception, ValueError) as ex:
         logging.getLogger().error(str(ex))
 
