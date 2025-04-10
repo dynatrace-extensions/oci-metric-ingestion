@@ -11,7 +11,7 @@ from aggregation import (
 @dataclass
 class DynatraceToOCIMetric:
     dynatrace_metric_key: str
-    aggregation_function: Callable[[List[Dict]], AggregateResult]
+    aggregation_function: Callable[[List[Dict]], List[AggregateResult]]
     dimension_filter: Dict[str, str] = field(default_factory=dict)
 
 class MetricMapping:
@@ -38,7 +38,7 @@ class MetricMapping:
     # Given the oci metric name and the list of datapoints, this function returns the dynatrace metric name and the aggregated value
     def value_from_oci_metric_name(
         self, oci_metric_name: str, oci_dimensions: Dict[str, str], datapoints: List[Dict]
-    ) -> Optional[Tuple[str, AggregateResult]]:
+    ) -> Optional[Tuple[str, List[AggregateResult]]]:
         metric_mappings = self.metric_key_map.get(oci_metric_name)
         if metric_mappings is None:
             return None
