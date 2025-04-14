@@ -55,7 +55,7 @@ def process_metrics(body: Dict):
                         "oci.resource_group": oci_dimensions.get("resourceGroup"),
                         "oci.compartment_id": oci_dimensions.get("compartmentId"),
                     },
-                    timestamp,
+                    timestamp * 1000,
                 )
                 logging.getLogger().info(f"mint_metric: {mint_metric}")
                 push_metrics_to_dynatrace(mint_metric)
@@ -71,7 +71,7 @@ def process_metrics(body: Dict):
 
     for result in results:
         mint_metric = MintMetric(
-            dynatrace_metric_key, result.value, dimensions, result.timestamp
+            dynatrace_metric_key, result.value, dimensions, result.timestamp * 1000
         )
     logging.getLogger().info(f"process_metrics: Mint Metric: {mint_metric}")
     push_metrics_to_dynatrace(mint_metric)
