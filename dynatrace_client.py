@@ -1,16 +1,16 @@
 from abc import abstractmethod, ABC
 import logging
 import time
+from typing import Dict
 import requests
 from mint import MintMetric
 
 METRIC_INGEST_ENDPOINT = "/api/v2/metrics/ingest"
 OAUTH_TOKEN_ENDPOINT = "/sso/oauth2/token"
 
-
 class BaseClient(ABC):
     @abstractmethod
-    def send_mint_metric(self, mint_metric: MintMetric):
+    def send_mint_metric(self, mint_metric: MintMetric, proxies: Dict[str, str]):
         pass
 
 
@@ -48,7 +48,7 @@ class OAuthClient(BaseClient):
                     f"Could not authentication using OAuth: {response.text}"
                 )
 
-    def send_mint_metric(self, mint_metric: MintMetric):
+    def send_mint_metric(self, mint_metric: MintMetric, proxies: Dict[str, str]):
         self.refresh_token()
         try:
             tenant_url = f"{self._tenant}{METRIC_INGEST_ENDPOINT}"
@@ -56,7 +56,7 @@ class OAuthClient(BaseClient):
                 "Content-Type": "text/plain",
                 "Authorization": f"Bearer {self._access_token}",
             }
-            response = requests.post(tenant_url, data=str(mint_metric), headers=headers)
+            response = requests.post(tenant_url, data=str(mint_metric), headers=headers, proxies=proxies)
             logging.getLogger().info(response.json())
         except Exception as e:
             logging.getLogger().error(f"Error sending mint metric: {e}")
@@ -67,14 +67,14 @@ class ApiClient(BaseClient):
         self._tenant = tenant
         self._api_token = api_token
 
-    def send_mint_metric(self, mint_metric: MintMetric):
+    def send_mint_metric(self, mint_metric: MintMetric, proxies: Dict[str, str]):
         try:
             tenant_url = f"{self._tenant}{METRIC_INGEST_ENDPOINT}"
             headers = {
                 "Content-Type": "text/plain",
                 "Authorization": f"Api-Token {self._api_token}",
             }
-            response = requests.post(tenant_url, data=str(mint_metric), headers=headers)
+            response = requests.post(tenant_url, data=str(mint_metric), headers=headers, proxies=proxies)
             logging.getLogger().info(response.text)
         except Exception as e:
             logging.getLogger().error(f"Error sending mint metric: {e}")
@@ -92,5 +92,5 @@ class DynatraceClient:
         self._client = ApiClient(self._tenant, api_token)
         return self
 
-    def send_mint_metric(self, mint_metric: MintMetric):
-        self._client.send_mint_metric(mint_metric)
+    def send_mint_metric(self, mint_metric: MintMetric, proxies: Dict[str, str]):
+        self._client.send_mint_metric(mint_metric, proxies)

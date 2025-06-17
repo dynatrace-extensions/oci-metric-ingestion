@@ -2,12 +2,13 @@ import io
 import os
 import json
 import logging
-from typing import Dict
+from typing import Dict, Optional
 from aggregation import create_minutely_buckets
 from dynatrace_client import DynatraceClient
 from mint import MintMetric
 from summary_stat import SummaryStat
 from metric_mapping import namespace_map
+from urllib.parse import quote
 
 
 def process_metrics(body: Dict):
@@ -99,10 +100,41 @@ def push_metrics_to_dynatrace(mint_metric: MintMetric):
         else:
             logging.getLogger().error(f"Invalid authentication method '{auth_method}'. Expected either 'oauth' or 'token'")
 
-        client.send_mint_metric(str(mint_metric))
+        proxy_url = create_proxy_connection()
+        proxies = {"http": proxy_url, "https": proxy_url} if proxy_url else None
+        client.send_mint_metric(str(mint_metric), proxies)
     except (Exception, ValueError) as ex:
         logging.getLogger().error(str(ex))
 
+
+def create_proxy_connection() -> Optional[Dict[str, str]]:
+    proxy_address = os.environ.get("PROXY_URL", None)
+    proxy_username = os.environ.get("PROXY_USERNAME", None)
+    proxy_password = os.environ.get("PROXY_PASSWORD", None)
+
+    if proxy_address is None:
+        return None
+
+    if proxy_address:
+        protocol, address = proxy_address.split("://")
+        proxy_url = f"{protocol}://"
+        proxy_url += _create_user_pass_url(proxy_username, proxy_password)
+        proxy_url += f"{address}"
+        return proxy_url
+
+    return None
+
+
+def _create_user_pass_url(proxy_username: str, proxy_password: str) -> str:
+    user_pass_url = None
+    if proxy_username:
+        proxy_username = quote(proxy_username, safe="")
+        user_pass_url = proxy_username
+        if proxy_password:
+            proxy_password = quote(proxy_password, safe="")
+            user_pass_url += f":{proxy_password}"
+        user_pass_url += "@"
+    return user_pass_url if user_pass_url else ""
 
 def handler(ctx, data: io.BytesIO = None):
     try:
