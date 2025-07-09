@@ -30,3 +30,4 @@ config:
   # cloud.oci.<oci namespace with the 'oci_' prefix removed>.<metric name>
   # Ex: "CpuUtilization" from namespace "oci_computeagent" -> "cloud.oci.computeagent.CpuUtilization"  
   IMPORT_ALL_METRICS: "False"
+  LOG_LEVEL: "INFO"

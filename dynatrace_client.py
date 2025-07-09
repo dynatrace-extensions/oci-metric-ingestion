@@ -56,7 +56,7 @@ class OAuthClient(BaseClient):
                 "Content-Type": "text/plain",
                 "Authorization": f"Bearer {self._access_token}",
             }
-            response = requests.post(tenant_url, data=str(mint_metric), headers=headers, proxies=proxies)
+            response = requests.post(tenant_url, data=str(mint_metric), headers=headers, proxies=proxies, timeout=15)
             logging.getLogger().info(response.json())
         except Exception as e:
             logging.getLogger().error(f"Error sending mint metric: {e}")
@@ -74,7 +74,7 @@ class ApiClient(BaseClient):
                 "Content-Type": "text/plain",
                 "Authorization": f"Api-Token {self._api_token}",
             }
-            response = requests.post(tenant_url, data=str(mint_metric), headers=headers, proxies=proxies)
+            response = requests.post(tenant_url, data=str(mint_metric), headers=headers, proxies=proxies, timeout=15)
             logging.getLogger().info(response.text)
         except Exception as e:
             logging.getLogger().error(f"Error sending mint metric: {e}")

@@ -9,6 +9,7 @@ from mint import MintMetric
 from summary_stat import SummaryStat
 from metric_mapping import namespace_map
 from urllib.parse import quote
+import requests
 
 
 def process_metrics(body: Dict):
@@ -102,10 +103,24 @@ def push_metrics_to_dynatrace(mint_metric: MintMetric):
 
         proxy_url = create_proxy_connection()
         proxies = {"http": proxy_url, "https": proxy_url} if proxy_url else None
+        logging.getLogger().debug(f"Using proxies: {proxies}")
         client.send_mint_metric(str(mint_metric), proxies)
     except (Exception, ValueError) as ex:
         logging.getLogger().error(str(ex))
 
+def validate_connection():
+    try:
+        tenant_url = os.environ["DYNATRACE_TENANT"]
+        # Remove the trailing slash if it exits
+        if tenant_url.endswith("/"):
+            tenant_url = tenant_url[:-1]
+        proxy_url = create_proxy_connection()
+        proxies = {"http": proxy_url, "https": proxy_url} if proxy_url else None
+        logging.getLogger().debug(f"Validating connection with proxies '{proxies}'")
+        response = requests.head(tenant_url, proxies=proxies, timeout=5)
+        logging.getLogger().debug(f"Validated connection and got ({response.status_code}): {response.text}")
+    except (Exception, ValueError) as ex:
+        logging.getLogger().error(f"Error validating connection ({response.status_code}): {ex}")
 
 def create_proxy_connection() -> Optional[Dict[str, str]]:
     proxy_address = os.environ.get("PROXY_URL", None)
@@ -136,7 +151,12 @@ def _create_user_pass_url(proxy_username: str, proxy_password: str) -> str:
         user_pass_url += "@"
     return user_pass_url if user_pass_url else ""
 
+
 def handler(ctx, data: io.BytesIO = None):
+    log_level = str(os.environ["LOG_LEVEL"])
+    logging.getLogger().setLevel(log_level.upper())
+    validate_connection()
+    
     try:
         body = json.loads(data.getvalue())
         if isinstance(body, list):
