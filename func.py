@@ -103,7 +103,7 @@ def push_metrics_to_dynatrace(mint_metric: MintMetric):
 
         proxy_url = create_proxy_connection()
         proxies = {"http": proxy_url, "https": proxy_url} if proxy_url else None
-        logging.getLogger().debug(f"Using proxies: {proxies}")
+        logging.getLogger().info(f"Using proxies: {proxies}")
         client.send_mint_metric(str(mint_metric), proxies)
     except (Exception, ValueError) as ex:
         logging.getLogger().error(str(ex))
@@ -115,10 +115,16 @@ def validate_connection():
         if tenant_url.endswith("/"):
             tenant_url = tenant_url[:-1]
         proxy_url = create_proxy_connection()
+        if proxy_url:
+            proxy_address = os.environ.get("PROXY_URL", None)
+            logging.getLogger().info(f"Testing connection to proxy '{proxy_address}'")
+            proxy_response = requests.head(proxy_address, timeout=5)
+            logging.getLogger().info(f"Validated connection to proxy and got ({proxy_response.status_code}): {proxy_response.text}")
+
         proxies = {"http": proxy_url, "https": proxy_url} if proxy_url else None
-        logging.getLogger().debug(f"Validating connection with proxies '{proxies}'")
+        logging.getLogger().info(f"Validating connection with proxies '{proxies}'")
         response = requests.head(tenant_url, proxies=proxies, timeout=5)
-        logging.getLogger().debug(f"Validated connection and got ({response.status_code}): {response.text}")
+        logging.getLogger().info(f"Validated connection and got ({response.status_code}): {response.text}")
     except (Exception, ValueError) as ex:
         logging.getLogger().error(f"Error validating connection ({response.status_code}): {ex}")
 
