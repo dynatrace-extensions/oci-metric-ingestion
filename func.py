@@ -13,6 +13,7 @@ import requests
 
 
 def process_metrics(body: Dict):
+    validate_connection()
     logging.getLogger().info(f"process_metrics: {body}")
 
     namespace = body.get("namespace")
@@ -161,7 +162,6 @@ def _create_user_pass_url(proxy_username: str, proxy_password: str) -> str:
 def handler(ctx, data: io.BytesIO = None):
     log_level = str(os.environ["LOG_LEVEL"])
     logging.getLogger().setLevel(log_level.upper())
-    validate_connection()
     
     try:
         body = json.loads(data.getvalue())
