@@ -148,6 +148,7 @@ def handler(ctx, data: io.BytesIO = None):
     logging.getLogger().setLevel(log_level.upper())
 
     try:
+        logging.getLogger().info(data.getvalue())
         body = json.loads(data.getvalue())
         if isinstance(body, list):
             # Batch of CloudEvents format
