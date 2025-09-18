@@ -13,7 +13,6 @@ import requests
 
 
 def process_metrics(body: Dict):
-    validate_connection()
     logging.getLogger().info(f"process_metrics: {body}")
 
     namespace = body.get("namespace")
@@ -27,7 +26,7 @@ def process_metrics(body: Dict):
 
     datapoints = body.get("datapoints")
 
-    import_all_metrics = True if os.environ["IMPORT_ALL_METRICS"] == "True" else False
+    import_all_metrics = True if os.environ["IMPORT_ALL_METRICS"].lower() == "true" else False
     logging.getLogger().info(f"import_all_metrics: {import_all_metrics}")
 
     if import_all_metrics:
@@ -112,33 +111,6 @@ def push_metrics_to_dynatrace(mint_metric: MintMetric):
         client.send_mint_metric(str(mint_metric), proxies)
     except (Exception, ValueError) as ex:
         logging.getLogger().error(str(ex))
-
-
-def validate_connection():
-    try:
-        tenant_url = os.environ["DYNATRACE_TENANT"]
-        # Remove the trailing slash if it exits
-        if tenant_url.endswith("/"):
-            tenant_url = tenant_url[:-1]
-        proxy_url = create_proxy_connection()
-        if proxy_url:
-            proxy_address = os.environ.get("PROXY_URL", None)
-            logging.getLogger().info(f"Testing connection to proxy '{proxy_address}'")
-            proxy_response = requests.head(proxy_address, timeout=5)
-            logging.getLogger().info(
-                f"Validated connection to proxy and got ({proxy_response.status_code}): {proxy_response.text}"
-            )
-
-        proxies = {"http": proxy_url, "https": proxy_url} if proxy_url else None
-        logging.getLogger().info(f"Validating connection with proxies '{proxies}'")
-        response = requests.head(tenant_url, proxies=proxies, timeout=5)
-        logging.getLogger().info(
-            f"Validated connection and got ({response.status_code}): {response.text}"
-        )
-    except (Exception, ValueError) as ex:
-        logging.getLogger().error(
-            f"Error validating connection ({response.status_code}): {ex}"
-        )
 
 
 def create_proxy_connection() -> Optional[Dict[str, str]]:
