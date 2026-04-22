@@ -2,7 +2,7 @@
 See https://www.dynatrace.com/hub/detail/oracle-connector-hub-signals-ingest/
 
 # What's new and changes
-See [CHANGELOG](CHANGELOG.md). Subscribe to watch CHANGELOG to get notified about new releases, fiex and patches to this project. 
+See [CHANGELOG](CHANGELOG.md). Subscribe to watch CHANGELOG to get notified about new releases, fixes and patches to this project. 
 
 
 # Getting Started
